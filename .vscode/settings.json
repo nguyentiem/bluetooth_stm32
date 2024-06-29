@@ -1,0 +1,5 @@
+{
+    "cortex-debug.armToolchainPath": "C:\\ARM_GNU\\12.3 REL1\\BIN",
+    "cortex-debug.openocdPath": "D:\\TOOL\\XPACK-OPENOCD-0.12.0-1-WIN32-X64\\XPACK-OPENOCD-0.12.0-1\\BIN\\OPENOCD.EXE",
+    "makefile.makefilePath": "D:\\stm32f103\\bluetooth\\STM32Make.make"
+}

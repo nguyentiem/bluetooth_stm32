@@ -1,0 +1,39 @@
+{
+  "configurations": [
+    {
+      "name": "WIN32",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/Core/Inc",
+        "${workspaceFolder}/Drivers/STM32F1xx_HAL_Driver/Inc",
+        "${workspaceFolder}/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy",
+        "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/include",
+        "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2",
+        "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3",
+        "${workspaceFolder}/Drivers/CMSIS/Device/ST/STM32F1xx/Include",
+        "${workspaceFolder}/Drivers/CMSIS/Include"
+      ],
+      "defines": [
+        "USE_HAL_DRIVER",
+        "STM32F103xx"
+      ],
+      "compilerPath": "C:/arm_gnu/12.3 rel1/bin/arm-none-eabi-gcc",
+      "compilerArgs": [
+        "-mcpu=cortex-m3",
+        "-mthumb",
+        "-mfpu=fpv5-d16",
+        "-mfloat-abi=hard"
+      ],
+      "cStandard": "gnu11",
+      "cppStandard": "gnu++14",
+      "intelliSenseMode": "gcc-arm"
+    },
+    {
+      "name": "STM32",
+      "includePath": [],
+      "defines": [],
+      "compilerPath": "C:\\ARM_GNU\\12.3 REL1\\BIN\\ARM-NONE-EABI-GCC.EXE"
+    }
+  ],
+  "version": 4
+}

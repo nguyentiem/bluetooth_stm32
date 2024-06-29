@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2024 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -26,6 +26,7 @@
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
+typedef StaticSemaphore_t osStaticMutexDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -45,25 +46,20 @@ I2C_HandleTypeDef hi2c1;
 
 UART_HandleTypeDef huart1;
 
-/* Definitions for defaultTask */
-osThreadId_t defaultTaskHandle;
-const osThreadAttr_t defaultTask_attributes = {
-  .name = "defaultTask",
-  .stack_size = 128 * 4,
+WWDG_HandleTypeDef hwwdg;
+
+/* Definitions for bluetoothTask */
+osThreadId_t bluetoothTaskHandle;
+const osThreadAttr_t bluetoothTask_attributes = {
+  .name = "bluetoothTask",
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for mainTask */
 osThreadId_t mainTaskHandle;
 const osThreadAttr_t mainTask_attributes = {
   .name = "mainTask",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
-};
-/* Definitions for blueTask */
-osThreadId_t blueTaskHandle;
-const osThreadAttr_t blueTask_attributes = {
-  .name = "blueTask",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for screenTask */
@@ -78,20 +74,23 @@ osMessageQueueId_t mainQueueHandle;
 const osMessageQueueAttr_t mainQueue_attributes = {
   .name = "mainQueue"
 };
+/* Definitions for bluetoothQueue */
+osMessageQueueId_t bluetoothQueueHandle;
+const osMessageQueueAttr_t bluetoothQueue_attributes = {
+  .name = "bluetoothQueue"
+};
 /* Definitions for screenQueue */
 osMessageQueueId_t screenQueueHandle;
 const osMessageQueueAttr_t screenQueue_attributes = {
   .name = "screenQueue"
 };
-/* Definitions for blueQueue */
-osMessageQueueId_t blueQueueHandle;
-const osMessageQueueAttr_t blueQueue_attributes = {
-  .name = "blueQueue"
-};
 /* Definitions for myMutex */
 osMutexId_t myMutexHandle;
+osStaticMutexDef_t myMutexControlBlock;
 const osMutexAttr_t myMutex_attributes = {
-  .name = "myMutex"
+  .name = "myMutex",
+  .cb_mem = &myMutexControlBlock,
+  .cb_size = sizeof(myMutexControlBlock),
 };
 /* USER CODE BEGIN PV */
 
@@ -102,9 +101,9 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_WWDG_Init(void);
 void StartDefaultTask(void *argument);
 void MainTask(void *argument);
-void BlueTask(void *argument);
 void ScreenTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -122,7 +121,6 @@ void ScreenTask(void *argument);
   */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -147,8 +145,9 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_USART1_UART_Init();
+  MX_WWDG_Init();
   /* USER CODE BEGIN 2 */
-
+  initOLED(&hi2c1);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -171,27 +170,24 @@ int main(void)
 
   /* Create the queue(s) */
   /* creation of mainQueue */
-  mainQueueHandle = osMessageQueueNew (16, sizeof(uint8_t), &mainQueue_attributes);
+  mainQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &mainQueue_attributes);
+
+  /* creation of bluetoothQueue */
+  bluetoothQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &bluetoothQueue_attributes);
 
   /* creation of screenQueue */
-  screenQueueHandle = osMessageQueueNew (16, sizeof(uint8_t), &screenQueue_attributes);
-
-  /* creation of blueQueue */
-  blueQueueHandle = osMessageQueueNew (16, sizeof(uint8_t), &blueQueue_attributes);
+  screenQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &screenQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of defaultTask */
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  /* creation of bluetoothTask */
+  bluetoothTaskHandle = osThreadNew(StartDefaultTask, NULL, &bluetoothTask_attributes);
 
   /* creation of mainTask */
   mainTaskHandle = osThreadNew(MainTask, NULL, &mainTask_attributes);
-
-  /* creation of blueTask */
-  blueTaskHandle = osThreadNew(BlueTask, NULL, &blueTask_attributes);
 
   /* creation of screenTask */
   screenTaskHandle = osThreadNew(ScreenTask, NULL, &screenTask_attributes);
@@ -208,7 +204,6 @@ int main(void)
   osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
-
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -324,6 +319,36 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * @brief WWDG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_WWDG_Init(void)
+{
+
+  /* USER CODE BEGIN WWDG_Init 0 */
+
+  /* USER CODE END WWDG_Init 0 */
+
+  /* USER CODE BEGIN WWDG_Init 1 */
+
+  /* USER CODE END WWDG_Init 1 */
+  hwwdg.Instance = WWDG;
+  hwwdg.Init.Prescaler = WWDG_PRESCALER_1;
+  hwwdg.Init.Window = 64;
+  hwwdg.Init.Counter = 64;
+  hwwdg.Init.EWIMode = WWDG_EWI_DISABLE;
+  if (HAL_WWDG_Init(&hwwdg) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN WWDG_Init 2 */
+
+  /* USER CODE END WWDG_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -359,7 +384,7 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
-  * @brief  Function implementing the defaultTask thread.
+  * @brief  Function implementing the bluetoothTask thread.
   * @param  argument: Not used
   * @retval None
   */
@@ -391,24 +416,6 @@ void MainTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END MainTask */
-}
-
-/* USER CODE BEGIN Header_BlueTask */
-/**
-* @brief Function implementing the blueTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_BlueTask */
-void BlueTask(void *argument)
-{
-  /* USER CODE BEGIN BlueTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END BlueTask */
 }
 
 /* USER CODE BEGIN Header_ScreenTask */

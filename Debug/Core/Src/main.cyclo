@@ -1,0 +1,10 @@
+../Core/Src/main.c:122:5:main	1
+../Core/Src/main.c:222:6:SystemClock_Config	3
+../Core/Src/main.c:259:13:MX_I2C1_Init	2
+../Core/Src/main.c:293:13:MX_USART1_UART_Init	2
+../Core/Src/main.c:326:13:MX_WWDG_Init	2
+../Core/Src/main.c:356:13:MX_GPIO_Init	1
+../Core/Src/main.c:392:6:StartDefaultTask	1
+../Core/Src/main.c:410:6:MainTask	1
+../Core/Src/main.c:428:6:ScreenTask	1
+../Core/Src/main.c:443:6:Error_Handler	1

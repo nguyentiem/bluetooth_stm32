@@ -1,0 +1,9 @@
+../Core/Src/queue.c:11:6:queue_init	16	static
+../Core/Src/queue.c:16:6:queue_pop	16	static
+../Core/Src/queue.c:27:6:queue_peek	16	static
+../Core/Src/queue.c:37:6:queue_push	16	static
+../Core/Src/queue.c:48:6:queue_push_arr	32	static
+../Core/Src/queue.c:64:6:queue_is_full	16	static
+../Core/Src/queue.c:73:6:queue_is_empty	16	static
+../Core/Src/queue.c:82:9:queue_get_space	16	static
+../Core/Src/queue.c:100:6:queue_reset_push	16	static

@@ -1,0 +1,5 @@
+../Core/Src/bluetooth_module.c:20:6:bt_init	1
+../Core/Src/bluetooth_module.c:29:13:get_phase_command	14
+../Core/Src/bluetooth_module.c:119:6:receive_byte_handle	1
+../Core/Src/bluetooth_module.c:124:6:transfer_bytes_handle	1
+../Core/Src/bluetooth_module.c:128:6:transfer_byte_callback	1

@@ -1,66 +1,49 @@
 /* USER CODE BEGIN Header */
 /**
- ******************************************************************************
- * @file           : main.c
- * @brief          : Main program body
- ******************************************************************************
- * @attention
- *
- * Copyright (c) 2024 STMicroelectronics.
- * All rights reserved.
- *
- * This software is licensed under terms that can be found in the LICENSE file
- * in the root directory of this software component.
- * If no LICENSE file comes with this software, it is provided AS-IS.
- *
- ******************************************************************************
- */
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2024 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include"oled.h"
+#include "screentask.h"
+#include"maintask.h"
+#include"bluetask.h"
+#include"config.h"
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
+uint8_t rx_data;
 
-/* USER CODE END Includes */
-
-/* Private typedef -----------------------------------------------------------*/
-typedef StaticSemaphore_t osStaticMutexDef_t;
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
 UART_HandleTypeDef huart1;
 
-WWDG_HandleTypeDef hwwdg;
-
-/* Definitions for bluetoothTask */
-osThreadId_t bluetoothTaskHandle;
-const osThreadAttr_t bluetoothTask_attributes = {
-  .name = "bluetoothTask",
-  .stack_size = 256 * 4,
+/* Definitions for bluetoohTask */
+osThreadId_t bluetoohTaskHandle;
+const osThreadAttr_t bluetoohTask_attributes = {
+  .name = "bluetoohTask",
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for mainTask */
 osThreadId_t mainTaskHandle;
 const osThreadAttr_t mainTask_attributes = {
   .name = "mainTask",
-  .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
 };
 /* Definitions for screenTask */
 osThreadId_t screenTaskHandle;
@@ -69,28 +52,20 @@ const osThreadAttr_t screenTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
-/* Definitions for mainQueue */
-osMessageQueueId_t mainQueueHandle;
-const osMessageQueueAttr_t mainQueue_attributes = {
-  .name = "mainQueue"
+/* Definitions for MainQueue */
+osMessageQueueId_t MainQueueHandle;
+const osMessageQueueAttr_t MainQueue_attributes = {
+  .name = "MainQueue"
 };
-/* Definitions for bluetoothQueue */
-osMessageQueueId_t bluetoothQueueHandle;
-const osMessageQueueAttr_t bluetoothQueue_attributes = {
-  .name = "bluetoothQueue"
+/* Definitions for BlueQueue */
+osMessageQueueId_t BlueQueueHandle;
+const osMessageQueueAttr_t BlueQueue_attributes = {
+  .name = "BlueQueue"
 };
-/* Definitions for screenQueue */
-osMessageQueueId_t screenQueueHandle;
-const osMessageQueueAttr_t screenQueue_attributes = {
-  .name = "screenQueue"
-};
-/* Definitions for myMutex */
-osMutexId_t myMutexHandle;
-osStaticMutexDef_t myMutexControlBlock;
-const osMutexAttr_t myMutex_attributes = {
-  .name = "myMutex",
-  .cb_mem = &myMutexControlBlock,
-  .cb_size = sizeof(myMutexControlBlock),
+/* Definitions for ScreenQueue */
+osMessageQueueId_t ScreenQueueHandle;
+const osMessageQueueAttr_t ScreenQueue_attributes = {
+  .name = "ScreenQueue"
 };
 /* USER CODE BEGIN PV */
 
@@ -101,90 +76,47 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
-static void MX_WWDG_Init(void);
-void StartDefaultTask(void *argument);
-void MainTask(void *argument);
-void ScreenTask(void *argument);
 
-/* USER CODE BEGIN PFP */
 
-/* USER CODE END PFP */
 
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+    if(huart->Instance == USART1){
+//    	xQueueSendxQueueSendFromISR()
+    	HAL_GPIO_TogglePin (GPIOC, GPIO_PIN_13);
+    	osMessageQueuePut(ScreenQueueHandle, &rx_data, 0,0);
+        HAL_UART_Receive_IT(&huart1, &rx_data, 1);
+    }
+}
 
-/* USER CODE END 0 */
 
-/**
-  * @brief  The application entry point.
-  * @retval int
-  */
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
 
-  /* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
   SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_USART1_UART_Init();
-  MX_WWDG_Init();
   /* USER CODE BEGIN 2 */
   initOLED(&hi2c1);
   /* USER CODE END 2 */
 
   /* Init scheduler */
   osKernelInitialize();
-  /* Create the mutex(es) */
-  /* creation of myMutex */
-  myMutexHandle = osMutexNew(&myMutex_attributes);
+  HAL_UART_Receive_IT(&huart1, &rx_data, 1);
 
-  /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
-  /* USER CODE END RTOS_MUTEX */
+  MainQueueHandle = osMessageQueueNew (16, sizeof(uint8_t), &MainQueue_attributes);
 
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
-  /* USER CODE END RTOS_SEMAPHORES */
+  /* creation of BlueQueue */
+  BlueQueueHandle = osMessageQueueNew (16, sizeof(uint8_t), &BlueQueue_attributes);
 
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
+  /* creation of ScreenQueue */
+  ScreenQueueHandle = osMessageQueueNew (16, sizeof(uint8_t), &ScreenQueue_attributes);
 
-  /* Create the queue(s) */
-  /* creation of mainQueue */
-  mainQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &mainQueue_attributes);
-
-  /* creation of bluetoothQueue */
-  bluetoothQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &bluetoothQueue_attributes);
-
-  /* creation of screenQueue */
-  screenQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &screenQueue_attributes);
-
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
-
-  /* Create the thread(s) */
-  /* creation of bluetoothTask */
-  bluetoothTaskHandle = osThreadNew(StartDefaultTask, NULL, &bluetoothTask_attributes);
+  bluetoohTaskHandle = osThreadNew(BlueTask, NULL, &bluetoohTask_attributes);
 
   /* creation of mainTask */
   mainTaskHandle = osThreadNew(MainTask, NULL, &mainTask_attributes);
@@ -192,27 +124,14 @@ int main(void)
   /* creation of screenTask */
   screenTaskHandle = osThreadNew(ScreenTask, NULL, &screenTask_attributes);
 
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
-  /* USER CODE END RTOS_THREADS */
-
-  /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
-  /* USER CODE END RTOS_EVENTS */
-
   /* Start scheduler */
   osKernelStart();
 
-  /* We should never get here as control is now taken by the scheduler */
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+
   while (1)
   {
-    /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
   }
-  /* USER CODE END 3 */
 }
 
 /**
@@ -285,11 +204,6 @@ static void MX_I2C1_Init(void)
 
 }
 
-/**
-  * @brief USART1 Initialization Function
-  * @param None
-  * @retval None
-  */
 static void MX_USART1_UART_Init(void)
 {
 
@@ -301,7 +215,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
+  huart1.Init.BaudRate = 9600;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -318,41 +232,6 @@ static void MX_USART1_UART_Init(void)
 
 }
 
-/**
-  * @brief WWDG Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_WWDG_Init(void)
-{
-
-  /* USER CODE BEGIN WWDG_Init 0 */
-
-  /* USER CODE END WWDG_Init 0 */
-
-  /* USER CODE BEGIN WWDG_Init 1 */
-
-  /* USER CODE END WWDG_Init 1 */
-  hwwdg.Instance = WWDG;
-  hwwdg.Init.Prescaler = WWDG_PRESCALER_1;
-  hwwdg.Init.Window = 64;
-  hwwdg.Init.Counter = 64;
-  hwwdg.Init.EWIMode = WWDG_EWI_DISABLE;
-  if (HAL_WWDG_Init(&hwwdg) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN WWDG_Init 2 */
-
-  /* USER CODE END WWDG_Init 2 */
-
-}
-
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -365,75 +244,15 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(INDICATOR_LED_PORT, INDICATOR_LED_PIN, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PC13 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Pin = INDICATOR_LED_PIN;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  HAL_GPIO_Init(INDICATOR_LED_PORT, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
-}
-
-/* USER CODE BEGIN 4 */
-
-/* USER CODE END 4 */
-
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the bluetoothTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
-{
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END 5 */
-}
-
-/* USER CODE BEGIN Header_MainTask */
-/**
-* @brief Function implementing the mainTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_MainTask */
-void MainTask(void *argument)
-{
-  /* USER CODE BEGIN MainTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END MainTask */
-}
-
-/* USER CODE BEGIN Header_ScreenTask */
-/**
-* @brief Function implementing the screenTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_ScreenTask */
-void ScreenTask(void *argument)
-{
-  /* USER CODE BEGIN ScreenTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END ScreenTask */
 }
 
 /**

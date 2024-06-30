@@ -8,8 +8,8 @@
 #define WIDTH 128
 #define HEIGHT 64
 #define WIRE_MAX 32
-#define size_x 8
-#define size_y 10
+#define heigh 8
+#define width 8
 #define TW_START 0x08 // start
 #define  TW_REP_START  0x10    // repeat start
 #define  TW_MT_SLA_ACK 0x18   // truyen slave addr de ghi co ack
@@ -28,9 +28,9 @@
 
 void initOLED(I2C_HandleTypeDef *i2cInstance);
 void drawChar(int16_t x, int16_t y, unsigned char c);
-void drawChars(uint8_t *x, uint8_t *y, char mess); 
+void drawChars(uint8_t *x, uint8_t *y, char *mess);
 void drawBitmap(int x, int y, unsigned char bitmap[], int w, int h);
 void drawImage(unsigned char bitmap[], int LOGO_HEIGHT, int LOGO_WIDTH);
-void clear(); 
-
+void clearDisplay();
+void test(int x, int y);
 #endif
